@@ -2,13 +2,7 @@
 
 var express = require('express');
 var router = express.Router();
-
-
-var fse = require('fs-extra');
-
-var devicesFile = './devices.json';
-let devices = [];
-
+var Gcm = require('../models/gcm');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -22,49 +16,72 @@ router.post('/register', function (req, res, next) {
   //var devices = fse.readJsonSync(devicesFile);
   var username = req.body.username;
   var token = req.body.token;
-  var devices = fse.readJsonSync(devicesFile);
 
-  console.log(devices.length);
-
-  if (devices.length) {
-    // console.log('update');
-    devices.forEach((v, idx) => {
-      if (v.username == username) {
-        devices[idx].token = token;
-        console.log(devices[idx]);
+  Gcm.checkDuplicated(req.db, username)
+    .then(function (total) {
+      if (total > 0) {
+        // update
+        Gcm.update(req.db, username, token)
+          .then(function () {
+            res.send({ ok: true });
+          }, function (err) {
+            res.send({ ok: false, msg: err });
+          });
       } else {
-        var obj = {};
-        obj.username = username;
-        obj.token = token;
-        devices.push(obj);
+        // new
+        Gcm.save(req.db, username, token)
+          .then(function () {
+            res.send({ ok: true });
+          }, function (err) {
+            res.send({ ok: false, msg: err });
+          });
       }
+
     });
-  } else {
-    // console.log('new');
-    var obj = {};
-    obj.username = username;
-    obj.token = token;
-    devices.push(obj);
-  }
+  // if (devices.length) {
+  //   // console.log('update');
+  //   devices.forEach((v, idx) => {
+  //     if (v.username == username) {
+  //       devices[idx].token = token;
+  //       console.log(devices[idx]);
+  //     } else {
+  //       var obj = {};
+  //       obj.username = username;
+  //       obj.token = token;
+  //       devices.push(obj);
+  //     }
+  //   });
+  // } else {
+  //   // console.log('new');
+  //   var obj = {};
+  //   obj.username = username;
+  //   obj.token = token;
+  //   devices.push(obj);
+  // }
 
   //console.log(devices);
 
-  fse.writeJsonSync(devicesFile, devices);
+ // fse.writeJsonSync(devicesFile, devices);
 
-  res.send({ ok: true });
+  // res.send({ ok: true });
 });
 
 router.get('/users', function (req, res, next) {
-  var users = fse.readJsonSync(devicesFile);
 
-  res.send({ ok: true, users: users });
+  Gcm.getUser(req.db)
+    .then(function (rows) {
+      res.send({ ok: true, rows: rows });
+    }, function (err) {
+      console.log(err);
+      res.send({ ok: false, msg: err });
+    });
 
 });
 
 router.post('/send', function (req, res, next) {
 
 var gcm = require('node-gcm');
-var fse = require('fs-extra');
+//var fse = require('fs-extra');
 
 console.log(req.body);
 

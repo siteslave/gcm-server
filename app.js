@@ -25,6 +25,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(cors());
 
+var db = require('knex')({
+  client: 'mysql',
+  connection: {
+    host: 'localhost',
+    port: 3306,
+    database: 'gcm',
+    user: 'root',
+    password: ''
+  }
+});
+
+app.use(function (req, res, next) {
+  req.db = db;
+  next();
+});
+
 app.use('/', routes);
 app.use('/users', users);
 
